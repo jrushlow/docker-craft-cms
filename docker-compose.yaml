@@ -1,0 +1,64 @@
+version: '3.7'
+services:
+    workspace:
+        build:
+            context: ./workspace
+            args:
+                - PHP_VERSION=${PHP_VERSION}
+        image: ${COMPOSE_PROJECT_NAME}_workspace:latest
+        volumes:
+            - ../:/var/htdocs
+        tty: true
+
+    php-cli:
+        build:
+            context: ./php-cli
+            args:
+                - PHP_VERSION=${PHP_VERSION}
+                - XDEBUG_ENABLE=${XDEBUG_ENABLE}
+                - XDEBUG_HOST=${XDEBUG_HOST}
+                - XDEBUG_PORT=${XDEBUG_PORT}
+                - XDEBUG_IDEKEY=${XDEBUG_IDEKEY}
+        environment:
+            - FUNC_TEST_ENV_FILE=.env.test.local
+        image: ${COMPOSE_PROJECT_NAME}_cli:latest
+        volumes:
+            - ../:/var/htdocs
+
+    php-fpm:
+        build:
+            context: ./php-fpm
+            args:
+                - PHP_VERSION=${PHP_VERSION}
+                - XDEBUG_ENABLE=${XDEBUG_ENABLE}
+                - XDEBUG_HOST=${XDEBUG_HOST}
+                - XDEBUG_PORT=${XDEBUG_PORT}
+                - XDEBUG_IDEKEY=${XDEBUG_IDEKEY}
+                - OPCACHE_ENABLE=${OPCACHE_ENABLE}
+        image: ${COMPOSE_PROJECT_NAME}_fpm:latest
+        volumes:
+            - ../:/var/htdocs
+
+    nginx:
+        build:
+            context: ./nginx
+        image: ${COMPOSE_PROJECT_NAME}_nginx:latest
+        volumes:
+            - ../web:/var/htdocs/web
+            - ./nginx/${NGINX_CONF}:/etc/nginx/nginx.conf
+            - ./nginx/conf.d:/etc/nginx/conf.d
+        depends_on:
+            - php-fpm
+        ports:
+            - "80:80"
+            - "443:443"
+
+    mysql:
+        image: 'mysql:latest'
+        environment:
+            MYSQL_ROOT_PASSWORD: password
+            MYSQL_USER: developer
+            MYSQL_PASSWORD: password
+            MYSQL_DATABASE: craft-cms
+        ports:
+            - '3306:3306'
